@@ -1,6 +1,8 @@
 import bo.PerfumeTransactionBO
 import entity.PerfumeTransaction
 import utility.CisUtility
+import java.lang.IO.println
+import java.util.ArrayList
 
 /**
  * Does the console work, adding or viewing transactions.
