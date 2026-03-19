@@ -1,11 +1,9 @@
 import bo.PerfumeTransactionBO
 import entity.PerfumeTransaction
 import utility.CisUtility
-import java.lang.IO.println
-import java.util.ArrayList
 
 /**
- * Does the console work, adding or viewing transactions.
+ * Does the console work, adding, viewing, or editing transactions.
  * Controls whom to call for specific work.
  *
  * @author Fardin
@@ -21,15 +19,18 @@ fun main() {
     val appName = "Perfume Shop POS"
     println("Welcome to the $appName application!\n")
 
-    val MENU = "\nMain Menu\nA-Add Transaction\nB-Show All Transactions\nX-Exit"
+    // UPDATED: Added C-Edit Transaction to the menu
+    val MENU = "\nMain Menu\nA-Add Transaction\nB-Show All Transactions\nC-Edit Transaction\nX-Exit"
     var option: String
 
     do {
         option = CisUtility.getInputString(MENU)
 
+        // UPDATED: Added "C" to the switch statement
         when (option.uppercase()) {
             "A" -> add()
             "B" -> show()
+            "C" -> edit()
             "X" -> println("Goodbye")
             else -> println("Invalid Option")
         }
@@ -61,6 +62,33 @@ fun show() {
             println(t.toString())
             println("-------------------------------")
         }
+    }
+}
+
+// NEW FUNCTION: Handles the editing of an existing transaction
+fun edit() {
+    println("\nEdit a Transaction")
+
+    // 1. Ask the user which ID they want to edit
+    val idToEdit = CisUtility.getInputInt("Enter the ID of the transaction to edit:")
+
+    // 2. Search the list for that specific ID
+    val transactionToEdit = transactions.find { it.id == idToEdit }
+
+    // 3. If found, let them re-enter the data and recalculate
+    if (transactionToEdit != null) {
+        println("\n-- Editing Transaction #$idToEdit --")
+
+        // Use the new edit method so users can skip fields
+        transactionToEdit.editInformation()
+
+        // Recalculate the taxes and totals with the new prices/quantities
+        PerfumeTransactionBO.calculateTotals(transactionToEdit)
+
+        println("\nTransaction Updated Successfully!")
+        println(transactionToEdit.toString())
+    } else {
+        println("\nError: Transaction with ID $idToEdit not found.")
     }
 }
 
