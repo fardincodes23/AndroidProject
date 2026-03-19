@@ -1,65 +1,70 @@
-# Perfume Shop - Kotlin Console Application (Sprint 1)
+# Project:  Perfume Shop #
 
-## 📖 Description
-This project is the initial **Sprint 1** release of the "Perfume Shop" capstone project. Currently, it is a **Console-Based Application** written entirely in **Kotlin**.
 
-The application functions as a Point of Sale (POS) system that allows the user to record perfume sales transactions. It utilizes a **Layered Architecture** (Entity, Business Object, Main) to separate data, logic, and user interface, serving as the foundation for the upcoming Android mobile application.
 
-## Development Team
-* **Lead Developer:** Fardin Sahriar AL Rafat
-* **Business Client:** Farhan Farhan
-* **Quality Control:** Chris Hopkins
+---
 
-## 🛠 Tech Stack
-* **Language:** Kotlin
-* **Environment:** Console (JVM)
-* **IDE:** IntelliJ IDEA / Android Studio
-* **Architecture:** Layered (Entity, BO, Utility)
-* **Data Storage:** In-Memory `ArrayList` (Sprint 1) / MySQL (Planned for future sprints)
+## Development Team ##
 
-## 📊 Data Model (PerfumeTransaction)
-The application tracks the following fields for every transaction, mapped strictly to the project requirements:
+Business Client:  Farhan Farhan<br/>
+Lead Developer:  Fardin Sahriar AL Rafat<br/>
+Quality Control:  Chris Hopkins<br/>
 
-| Field Name | Data Type | Description |
-| :--- | :--- | :--- |
-| `id` | `Int` | Unique ID (Auto-generated). |
-| `transactionDate` | `String` | Format: `yyyy-MM-dd`. Date of sale. |
-| `customerName` | `String` | Name of the purchaser. |
-| `phoneNumber` | `String` | Customer contact number. |
-| `perfumeChoice` | `String` | The specific brand or scent selected. |
-| `perfumeSize` | `String` | Size of the bottle (e.g., 100ml). |
-| `pricePerBottle` | `Int` | Cost per individual unit. |
-| `quantity` | `Int` | Number of units purchased. |
-| `subTotal` | `Double` | **Auto-Calculated:** `price * quantity` |
-| `taxAmount` | `Double` | **Auto-Calculated:** `subTotal * Tax Rate` |
-| `total` | `Double` | **Auto-Calculated:** `subTotal + taxAmount` |
+---
 
-## 🧮 Business Logic & Calculations
-The application uses a specialized **Business Object (BO)** (`PerfumeTransactionBO`) to handle financial logic automatically.
+## Description ##
 
-### Formulas
-1. **Subtotal:** `quantity * pricePerBottle`
-2. **Tax Amount:** `subTotal * 0.15` (15% HST)
-3. **Total Price:** `subTotal + taxAmount`
+This project will allow the tracking of sales transactions in the Perfume Shop. This includes the sale of different types of perfumes, as well as the specific bottle sizes. It will also calculate the taxable amount, and provide a subtotal and total amount due.  <br/><br/>
 
-*Note: Financial values are displayed using standard currency formatting (e.g., $140.00).*
+---
 
-## 🚀 Features (Sprint 1)
-* **Add Transaction:** User inputs sales data via a guided console menu.
-* **Auto-Calculation:** Tax and totals are calculated instantly upon entry.
-* **View Ledger:** Displays a formatted list of all recorded transactions in the current session.
-* **Utility Integration:** Uses `CisUtility` for robust input handling and currency formatting.
-* **Dummy Data:** Includes an `initialize()` function to preload test data for quick demonstration.
+## Color ##
 
-## ⚙️ How to Run
-1. **Open the Project:** Open the root folder in **IntelliJ IDEA** or **Android Studio**.
-2. **Verify Structure:** Ensure the following packages exist:
-    * `src/main/kotlin/Main.kt`
-    * `src/main/kotlin/entity/PerfumeTransaction.kt`
-    * `src/main/kotlin/bo/PerfumeTransactionBO.kt`
-    * `src/main/kotlin/utility/CisUtility.kt`
-3. **Run:** Right-click `Main.kt` and select **Run 'MainKt'**.
-4. **Interact:**
-    * Enter **A** to add a sale.
-    * Enter **B** to view the ledger.
-    * Enter **X** to exit.
+Main Color: darkgoldenrod (Primary headers and highlights)<br/>
+
+Secondary Color: darkblue (Navigation and structure)<br/>
+
+Accent Color: darkred (Error messages and alerts)<br/>
+
+---
+
+## Required Fields ##
+
+This will be a list of fields and their datatype (class design format). There are expected to be a minimum of six fields.<br/>
+-id: int //primary key<br/>
+-transactionDate: String Note: yyyy-MM-dd<br/>
+-customerName: String<br/>
+-phoneNumber: String<br/>
+-perfumeChoice: String<br/>
+-perfumeSize: String<br/>
+-pricePerBottle: double<br/>
+-quantity: int<br/>
+-subTotal: double<br/>
+-taxAmount: double<br/>
+-total: double<br/>
+
+---
+
+## Calculation ##
+
+Once the user has selected their choice of perfume, bottle size, and entered the quantity and price per bottle, we can calculate the total of their order.<br/>
+Tax rate is 15%<br/>
+
+Here is the calculation that will be performed for each transaction:<br/>
+subTotal = pricePerBottle * quantity<br/>
+taxAmount = subTotal * taxRate<br/>
+total = subTotal + taxAmount<br/>
+
+Example calculation:<br/>
+A customer orders 2 bottles of Sauvage at $140 each.<br/>
+subTotal = 140 * 2 = 280<br/>
+taxAmount = 280 * 0.15 = 42<br/>
+total = 280 + 42 = $322<br/>
+
+---
+
+## Report Details ##
+
+The user enters a perfume name and all transactions containing that specific perfume are shown. The list is displayed in descending order by Order ID (Primary Key).
+
+---
