@@ -1,7 +1,7 @@
 package entity
 
 import java.util.Objects
-
+import java.text.NumberFormat
 
 /**
  * Entity class
@@ -55,17 +55,19 @@ class PerfumeTransaction {
 
 
     override fun toString(): String {
+        val formatter = NumberFormat.getCurrencyInstance() // Native currency formatter
+
         return "PerfumeTransaction\n" +
                 "    ID               = " + id + "\n" +
                 "    Date             = " + transactionDate + "\n" +
                 "    Customer         = " + customerName + "\n" +
                 "    Phone            = " + phoneNumber + "\n" +
                 "    Perfume          = " + perfumeChoice + " (" + perfumeSize + ")\n" +
-                "    Price/Bottle     = " + CisUtility.toCurrency(pricePerBottle.toDouble()) + "\n" +
+                "    Price/Bottle     = " + formatter.format(pricePerBottle.toDouble()) + "\n" +
                 "    Quantity         = " + quantity + "\n" +
-                "    SubTotal         = " + CisUtility.toCurrency(subTotal) + "\n" +
-                "    Tax              = " + CisUtility.toCurrency(taxAmount) + "\n" +
-                "    TOTAL            = " + CisUtility.toCurrency(total) + "\n"
+                "    SubTotal         = " + formatter.format(subTotal) + "\n" +
+                "    Tax              = " + formatter.format(taxAmount) + "\n" +
+                "    TOTAL            = " + formatter.format(total) + "\n"
     }
 
     override fun equals(other: Any?): Boolean {
