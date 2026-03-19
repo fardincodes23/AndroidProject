@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Perfume Shop</string>
+
+    <string-array name="perfume_choices">
+        <item>Sauvage by Dior</item>
+        <item>Bleu de Chanel</item>
+        <item>Acqua Di Gio</item>
+        <item>YSL La Nuit</item>
+        <item>Tom Ford Oud Wood</item>
+    </string-array>
 </resources>
