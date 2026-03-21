@@ -8,6 +8,11 @@ import entity.PerfumeTransaction
 
 @Dao
 interface PerfumeDao {
+
+    // WORK ITEM 6: Returns a Cursor specifically for the Content Provider
+    @Query("SELECT * FROM transactions ORDER BY id DESC")
+    fun getTransactionsCursor(): android.database.Cursor
+
     // Grab all saved transactions from the phone's memory
     @Query("SELECT * FROM transactions ORDER BY id DESC")
     suspend fun getAllLocalTransactions(): List<PerfumeTransaction>
