@@ -30,6 +30,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.compose.material.icons.filled.Share
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,7 +88,7 @@ fun SplashScreen() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
@@ -100,6 +102,14 @@ fun MainScreen() {
     var phone by remember { mutableStateOf("") }
     var priceStr by remember { mutableStateOf("") }
     var quantityStr by remember { mutableStateOf("") }
+
+    // Tracks if the camera is open or closed
+    var showCamera by remember { mutableStateOf(false) }
+
+    // Asks the user for Camera Permission
+    val cameraPermissionState = com.google.accompanist.permissions.rememberPermissionState(
+        android.Manifest.permission.CAMERA
+    )
 
     // Dropdown State
     val perfumeOptions = listOf(
@@ -234,10 +244,25 @@ fun MainScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        Button(
+            onClick = {
+                if (!cameraPermissionState.status.isGranted) {
+                    cameraPermissionState.launchPermissionRequest()
+                } else {
+                    showCamera = true
+                }
+            },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        ) {
+            Text("📷 Scan Item Barcode")
+        }
+
+
         // SAVE BUTTON
         Button(
             onClick = {
                 try {
+
                     val transaction = PerfumeTransaction().apply {
                         //id = transactionsList.size + 1
                         transactionDate = date
@@ -368,6 +393,32 @@ fun MainScreen() {
 
             }
         }
+    }
+    if (showCamera) {
+        CameraScannerScreen(onBarcodeScanned = { scannedNumber ->
+            // 1. Close the camera
+            showCamera = false
+
+            // 2. Check the catalog! Match the scanned number to a perfume
+            when (scannedNumber) {
+                // REPLACE "123456789" with the EXACT number you just scanned on your phone/perfume box!
+                "3145891073607" -> {
+                    selectedPerfume = perfumeOptions[1] // Changes the dropdown to the 1st perfume
+                    Toast.makeText(context, "Scanned: ${perfumeOptions[1]}", Toast.LENGTH_SHORT).show()
+                }
+
+                // You can add as many as you want here...
+                "987654321" -> {
+                    selectedPerfume = perfumeOptions[1] // Changes the dropdown to the 2nd perfume
+                    Toast.makeText(context, "Scanned: ${perfumeOptions[1]}", Toast.LENGTH_SHORT).show()
+                }
+
+                // If they scan a random bottle of water or something not in our system:
+                else -> {
+                    Toast.makeText(context, "Item not in database. Scanned ID: $scannedNumber", Toast.LENGTH_LONG).show()
+                }
+            }
+        })
     }
 }
 

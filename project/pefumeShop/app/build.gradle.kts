@@ -65,4 +65,17 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
+
+    // CameraX for the live camera feed
+    val camerax_version = "1.3.1"
+    implementation("androidx.camera:camera-core:${camerax_version}")
+    implementation("androidx.camera:camera-camera2:${camerax_version}")
+    implementation("androidx.camera:camera-lifecycle:${camerax_version}")
+    implementation("androidx.camera:camera-view:${camerax_version}")
+
+    // Google ML Kit for reading the Barcodes
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
+
+    // Accompanist for easily asking the user for Camera Permission
+    implementation("com.google.accompanist:accompanist-permissions:0.35.0-alpha")
 }
