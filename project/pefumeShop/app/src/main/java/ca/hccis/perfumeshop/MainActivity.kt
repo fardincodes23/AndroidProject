@@ -25,6 +25,10 @@ import bo.PerfumeTransactionBO
 import entity.PerfumeTransaction
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,8 +43,7 @@ class MainActivity : ComponentActivity() {
 
             MaterialTheme(colorScheme = customColorScheme) {
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background
                 ) {
                     AppNavigation()
                 }
@@ -76,10 +79,8 @@ fun SplashScreen() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Perfume Shop",
-            color = Color(0xFFD4AF37), // Gold text
-            fontSize = 40.sp,
-            fontWeight = FontWeight.Bold
+            text = "Perfume Shop", color = Color(0xFFD4AF37), // Gold text
+            fontSize = 40.sp, fontWeight = FontWeight.Bold
         )
     }
 }
@@ -89,6 +90,9 @@ fun SplashScreen() {
 fun MainScreen() {
     val context = LocalContext.current
 
+    // NEW: Activate our System Broadcast Listener
+    BatteryWarningReceiver(context = context)
+
     // --- STATE VARIABLES (These replace findViewById) ---
     var date by remember { mutableStateOf("") }
     var customerName by remember { mutableStateOf("") }
@@ -97,7 +101,9 @@ fun MainScreen() {
     var quantityStr by remember { mutableStateOf("") }
 
     // Dropdown State
-    val perfumeOptions = listOf("Sauvage by Dior", "Bleu de Chanel", "Acqua Di Gio", "YSL La Nuit", "Tom Ford Oud Wood")
+    val perfumeOptions = listOf(
+        "Sauvage by Dior", "Bleu de Chanel", "Acqua Di Gio", "YSL La Nuit", "Tom Ford Oud Wood"
+    )
     var expanded by remember { mutableStateOf(false) }
     var selectedPerfume by remember { mutableStateOf(perfumeOptions[0]) }
 
@@ -145,13 +151,34 @@ fun MainScreen() {
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("New Perfume Sale", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text(
+            "New Perfume Sale",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
         // Basic Text Fields
-        OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Date (yyyy-mm-dd)") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = customerName, onValueChange = { customerName = it }, label = { Text("Customer Name") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone Number") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = date,
+            onValueChange = { date = it },
+            label = { Text("Date (yyyy-mm-dd)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = customerName,
+            onValueChange = { customerName = it },
+            label = { Text("Customer Name") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = phone,
+            onValueChange = { phone = it },
+            label = { Text("Phone Number") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -163,17 +190,16 @@ fun MainScreen() {
                 readOnly = true,
                 label = { Text("Perfume Choice") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier.menuAnchor().fillMaxWidth()
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
             )
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 perfumeOptions.forEach { selectionOption ->
-                    DropdownMenuItem(
-                        text = { Text(selectionOption) },
-                        onClick = {
-                            selectedPerfume = selectionOption
-                            expanded = false
-                        }
-                    )
+                    DropdownMenuItem(text = { Text(selectionOption) }, onClick = {
+                        selectedPerfume = selectionOption
+                        expanded = false
+                    })
                 }
             }
         }
@@ -190,8 +216,20 @@ fun MainScreen() {
         }
 
         // Numbers Fields
-        OutlinedTextField(value = priceStr, onValueChange = { priceStr = it }, label = { Text("Price Per Bottle ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = quantityStr, onValueChange = { quantityStr = it }, label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = priceStr,
+            onValueChange = { priceStr = it },
+            label = { Text("Price Per Bottle ($)") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = quantityStr,
+            onValueChange = { quantityStr = it },
+            label = { Text("Quantity") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -236,10 +274,14 @@ fun MainScreen() {
                             // 3. NOW, silently try to push it to the Cloud API in the background
                             try {
                                 RetrofitClient.apiService.addTransaction(transaction)
-                                Toast.makeText(context, "Saved to Phone AND Cloud!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context, "Saved to Phone AND Cloud!", Toast.LENGTH_SHORT
+                                ).show()
                             } catch (e: Exception) {
                                 // CHANGED: Show the ACTUAL error message from the server
-                                Toast.makeText(context, "API Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                Toast.makeText(
+                                    context, "API Error: ${e.message}", Toast.LENGTH_LONG
+                                ).show()
                             }
                         } catch (e: Exception) {
                             Toast.makeText(context, "Database Error", Toast.LENGTH_SHORT).show()
@@ -257,8 +299,7 @@ fun MainScreen() {
                 } catch (e: Exception) {
                     Toast.makeText(context, "Error saving", Toast.LENGTH_SHORT).show()
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
+            }, modifier = Modifier.fillMaxWidth()
         ) {
             Text("Calculate & Save")
         }
@@ -269,16 +310,49 @@ fun MainScreen() {
         Text("Previous Transactions", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         transactionsList.forEach { t ->
             Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("ID: ${t.id} - ${t.customerName}", fontWeight = FontWeight.Bold)
                     Text("${t.perfumeChoice} (${t.perfumeSize})")
-                    Text("Total: $${String.format("%.2f", t.total)}", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Total: $${String.format("%.2f", t.total)}",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun BatteryWarningReceiver(context: Context) {
+    // DisposableEffect ensures the receiver is safely closed when the app is closed
+    DisposableEffect(context) {
+        val batteryReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_BATTERY_LOW) {
+                    Toast.makeText(
+                        context,
+                        "⚠️ CRITICAL: Battery Low! Plug in the POS system!",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
+        // Tell Android we specifically only want to listen for the "Battery Low" broadcast
+        val filter = IntentFilter(Intent.ACTION_BATTERY_LOW)
+        context.registerReceiver(batteryReceiver, filter)
+
+        // Cleanup when the app is closed
+        onDispose {
+            context.unregisterReceiver(batteryReceiver)
         }
     }
 }
