@@ -1,8 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.compose.compiler) // ADD THIS LINE
 }
-
 android {
     namespace = "ca.hccis.perfumeshop"
     compileSdk {
@@ -20,9 +20,6 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
     }
 
     buildTypes {
