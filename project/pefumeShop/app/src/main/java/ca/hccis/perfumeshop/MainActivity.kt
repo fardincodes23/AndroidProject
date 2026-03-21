@@ -29,6 +29,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.compose.material.icons.filled.Share
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -305,8 +306,7 @@ fun MainScreen() {
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // LEDGER: Displaying entities via Material Cards
+// LEDGER: Displaying entities via Material Cards
         Text("Previous Transactions", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         transactionsList.forEach { t ->
             Card(
@@ -316,15 +316,56 @@ fun MainScreen() {
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("ID: ${t.id} - ${t.customerName}", fontWeight = FontWeight.Bold)
-                    Text("${t.perfumeChoice} (${t.perfumeSize})")
-                    Text(
-                        "Total: $${String.format("%.2f", t.total)}",
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
-                    )
+                // Use a Row so we can put the text on the left and the button on the right
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("ID: ${t.id} - ${t.customerName}", fontWeight = FontWeight.Bold)
+                        Text("${t.perfumeChoice} (${t.perfumeSize})")
+                        Text(
+                            "Total: $${String.format("%.2f", t.total)}",
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // WORK ITEM 8: The Share Button
+                    IconButton(onClick = {
+                        // 1. Format the receipt text
+                        val receiptText = """
+                            🌸 Perfume Shop Receipt 🌸
+                            Customer: ${t.customerName}
+                            Item: ${t.perfumeChoice} (${t.perfumeSize})
+                            Quantity: ${t.quantity}
+                            Total Paid: $${String.format("%.2f", t.total)}
+                            Thank you for your purchase!
+                        """.trimIndent()
+
+                        // 2. Create the Implicit Intent to share
+                        val sendIntent = android.content.Intent().apply {
+                            action = android.content.Intent.ACTION_SEND
+                            putExtra(android.content.Intent.EXTRA_TEXT, receiptText)
+                            type = "text/plain"
+                        }
+
+                        // 3. Launch the Android Share Menu
+                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Share Receipt Via...")
+                        context.startActivity(shareIntent)
+                    }) {
+                        // Built-in Material Share Icon
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Share,
+                            contentDescription = "Share Receipt",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
+
             }
         }
     }
