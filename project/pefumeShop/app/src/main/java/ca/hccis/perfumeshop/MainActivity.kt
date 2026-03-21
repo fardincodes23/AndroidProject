@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import bo.PerfumeTransactionBO
 import entity.PerfumeTransaction
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -106,6 +107,18 @@ fun MainScreen() {
 
     // Ledger State
     val transactionsList = remember { mutableStateListOf<PerfumeTransaction>() }
+    val coroutineScope = rememberCoroutineScope() // Allows us to run background internet tasks
+
+    // This runs ONCE when the app opens to download the API data
+    LaunchedEffect(Unit) {
+        try {
+            val apiData = RetrofitClient.apiService.getTransactions()
+            transactionsList.clear()
+            transactionsList.addAll(apiData)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Failed to load from API. Are you connected to the internet?", Toast.LENGTH_LONG).show()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -169,7 +182,7 @@ fun MainScreen() {
             onClick = {
                 try {
                     val transaction = PerfumeTransaction().apply {
-                        id = transactionsList.size + 1
+                        //id = transactionsList.size + 1
                         transactionDate = date
                         this.customerName = customerName
                         phoneNumber = phone
@@ -180,8 +193,19 @@ fun MainScreen() {
                     }
 
                     PerfumeTransactionBO.calculateTotals(transaction)
-                    transactionsList.add(transaction)
+// NEW API LOGIC: Upload to the internet in the background
+                    coroutineScope.launch {
+                        try {
+                            // 1. Post to API
+                            val savedTransaction = RetrofitClient.apiService.addTransaction(transaction)
+                            // 2. Add the verified API response to our local list
+                            transactionsList.add(savedTransaction)
 
+                            Toast.makeText(context, "Saved to Cloud API!", Toast.LENGTH_SHORT).show()
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Error saving to API", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                     // Clear form for next user
                     customerName = ""
                     phone = ""
