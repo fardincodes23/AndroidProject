@@ -1,5 +1,7 @@
 package entity
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import java.util.Objects
 import java.text.NumberFormat
 
@@ -9,8 +11,11 @@ import java.text.NumberFormat
  * @author Fardin
  * @since 2026-01-12
  */
+
+@Entity(tableName = "transactions")
 class PerfumeTransaction {
 
+    @PrimaryKey(autoGenerate = true)
     var id: Int = 0
     var transactionDate: String? = null
     var customerName: String? = null

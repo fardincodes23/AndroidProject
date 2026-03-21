@@ -109,14 +109,32 @@ fun MainScreen() {
     val transactionsList = remember { mutableStateListOf<PerfumeTransaction>() }
     val coroutineScope = rememberCoroutineScope() // Allows us to run background internet tasks
 
-    // This runs ONCE when the app opens to download the API data
+    // Connect to our local Room Database
+    val db = remember { DatabaseProvider.getDatabase(context) }
+    val dao = db.perfumeDao()
+
+    // PAGE LOAD: Offline-First Strategy
     LaunchedEffect(Unit) {
+        // 1. Immediately load whatever is on the phone so the user isn't staring at a blank screen
+        val localData = dao.getAllLocalTransactions()
+        transactionsList.clear()
+        transactionsList.addAll(localData)
+
+        // 2. Try to fetch from the internet to see if there is anything new from the cloud
         try {
             val apiData = RetrofitClient.apiService.getTransactions()
+
+            // Save the new internet data into our local phone database to keep them synced
+            dao.insertAll(apiData)
+
+            // Refresh the screen with the perfectly synced data
+            val updatedLocalData = dao.getAllLocalTransactions()
             transactionsList.clear()
-            transactionsList.addAll(apiData)
+            transactionsList.addAll(updatedLocalData)
+
         } catch (e: Exception) {
-            Toast.makeText(context, "Failed to load from API. Are you connected to the internet?", Toast.LENGTH_LONG).show()
+            // If the internet is down, do nothing! The user can still see their local data.
+            Toast.makeText(context, "Offline Mode: Showing local data", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -194,16 +212,37 @@ fun MainScreen() {
 
                     PerfumeTransactionBO.calculateTotals(transaction)
 // NEW API LOGIC: Upload to the internet in the background
+                    // SAVE LOGIC: Offline-First Strategy
                     coroutineScope.launch {
                         try {
-                            // 1. Post to API
-                            val savedTransaction = RetrofitClient.apiService.addTransaction(transaction)
-                            // 2. Add the verified API response to our local list
-                            transactionsList.add(savedTransaction)
+                            // 1. ALWAYS save to the local phone database first
+                            dao.insertTransaction(transaction)
 
-                            Toast.makeText(context, "Saved to Cloud API!", Toast.LENGTH_SHORT).show()
+                            // 2. Refresh the UI to show the new receipt immediately
+                            val updatedData = dao.getAllLocalTransactions()
+                            transactionsList.clear()
+                            transactionsList.addAll(updatedData)
+
+                            Toast.makeText(context, "Saved Locally!", Toast.LENGTH_SHORT).show()
+
+                            // Clear form for next user
+                            customerName = ""
+                            phone = ""
+                            priceStr = ""
+                            quantityStr = ""
+                            selectedPerfume = perfumeOptions[0]
+                            selectedSize = sizeOptions[0]
+
+                            // 3. NOW, silently try to push it to the Cloud API in the background
+                            try {
+                                RetrofitClient.apiService.addTransaction(transaction)
+                                Toast.makeText(context, "Saved to Phone AND Cloud!", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                // CHANGED: Show the ACTUAL error message from the server
+                                Toast.makeText(context, "API Error: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Error saving to API", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Database Error", Toast.LENGTH_SHORT).show()
                         }
                     }
                     // Clear form for next user
