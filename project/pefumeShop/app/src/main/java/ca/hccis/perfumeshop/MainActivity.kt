@@ -130,27 +130,40 @@ fun MainScreen() {
     val db = remember { DatabaseProvider.getDatabase(context) }
     val dao = db.perfumeDao()
 
-    // PAGE LOAD: Offline-First Strategy
+    // PAGE LOAD: Two-Way Sync (Offline-First Strategy)
     LaunchedEffect(Unit) {
-        // 1. Immediately load whatever is on the phone so the user isn't staring at a blank screen
+        // 1. Immediately load phone data so the screen isn't empty
         val localData = dao.getAllLocalTransactions()
         transactionsList.clear()
         transactionsList.addAll(localData)
 
-        // 2. Try to fetch from the internet to see if there is anything new from the cloud
+        // 2. Try to connect to the internet
         try {
+            // A. See what is currently on the cloud
             val apiData = RetrofitClient.apiService.getTransactions()
 
-            // Save the new internet data into our local phone database to keep them synced
-            dao.insertAll(apiData)
+            // B. Find local phone records that are NOT on the cloud yet
+            // (We compare the IDs. If the phone has an ID the cloud doesn't, it's an offline record)
+            val unsyncedRecords = localData.filter { localRecord ->
+                apiData.none { cloudRecord -> cloudRecord.id == localRecord.id }
+            }
 
-            // Refresh the screen with the perfectly synced data
+            // C. Push those missing offline records UP to the cloud!
+            unsyncedRecords.forEach { offlineTransaction ->
+                RetrofitClient.apiService.addTransaction(offlineTransaction)
+            }
+
+            // D. Now that the cloud has everything, pull the master list back DOWN
+            val finalApiData = RetrofitClient.apiService.getTransactions()
+            dao.insertAll(finalApiData) // Updates the local database
+
+            // E. Refresh the screen perfectly
             val updatedLocalData = dao.getAllLocalTransactions()
             transactionsList.clear()
             transactionsList.addAll(updatedLocalData)
 
         } catch (e: Exception) {
-            // If the internet is down, do nothing! The user can still see their local data.
+            // If the internet is down, do nothing! The user still sees their local data.
             Toast.makeText(context, "Offline Mode: Showing local data", Toast.LENGTH_SHORT).show()
         }
     }
@@ -300,14 +313,10 @@ fun MainScreen() {
                             // 3. NOW, silently try to push it to the Cloud API in the background
                             try {
                                 RetrofitClient.apiService.addTransaction(transaction)
-                                Toast.makeText(
-                                    context, "Saved to Phone AND Cloud!", Toast.LENGTH_SHORT
-                                ).show()
+                                Toast.makeText(context, "Synced to Cloud!", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                // CHANGED: Show the ACTUAL error message from the server
-                                Toast.makeText(
-                                    context, "API Error: ${e.message}", Toast.LENGTH_LONG
-                                ).show()
+                                // CHANGED: We replaced the ugly e.message with a clean, professional warning
+                                Toast.makeText(context, "Offline: Saved locally, will sync later.", Toast.LENGTH_LONG).show()
                             }
                         } catch (e: Exception) {
                             Toast.makeText(context, "Database Error", Toast.LENGTH_SHORT).show()
