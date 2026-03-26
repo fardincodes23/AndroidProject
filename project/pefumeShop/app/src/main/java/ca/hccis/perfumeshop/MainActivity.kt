@@ -275,6 +275,9 @@ fun MainScreen() {
                             selectedPerfume = perfumeOptions[0]
                             selectedSize = sizeOptions[0]
 
+                            // 📍 SPRINT 4: START THE AUDIO SERVICE!
+                            context.startService(Intent(context, AudioService::class.java))
+
                             try {
                                 RetrofitClient.apiService.addTransaction(transaction)
                                 Toast.makeText(context, "Saved & Synced to Cloud!", Toast.LENGTH_SHORT).show()
