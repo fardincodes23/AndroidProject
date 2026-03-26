@@ -28,6 +28,7 @@ class PerfumeTransaction {
     var subTotal: Double = 0.0
     var taxAmount: Double = 0.0
     var total: Double = 0.0
+    var cashierName: String = "" // 📍 ADD THIS NEW LINE!
 
     constructor()
 

@@ -1,56 +1,47 @@
 package ca.hccis.perfumeshop
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import bo.PerfumeTransactionBO
 import entity.PerfumeTransaction
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import androidx.compose.material.icons.filled.Share
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            // Our custom Material Design Color Scheme
             val customColorScheme = lightColorScheme(
-                primary = Color(0xFFB8860B), // Dark Goldenrod
-                secondary = Color(0xFF00008B), // Dark Blue
-                error = Color(0xFF8B0000) // Dark Red
+                primary = Color(0xFFB8860B),
+                secondary = Color(0xFF00008B),
+                error = Color(0xFF8B0000)
             )
 
             MaterialTheme(colorScheme = customColorScheme) {
@@ -66,10 +57,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation() {
-    // This simple state handles our Splash Screen logic!
     var showSplash by remember { mutableStateOf(true) }
 
-    // Coroutine to hide splash after 2 seconds
     LaunchedEffect(Unit) {
         delay(2000)
         showSplash = false
@@ -87,11 +76,11 @@ fun SplashScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1E1E1E)), // Dark background
+            .background(Color(0xFF1E1E1E)),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Perfume Shop", color = Color(0xFFD4AF37), // Gold text
+            text = "Perfume Shop", color = Color(0xFFD4AF37),
             fontSize = 40.sp, fontWeight = FontWeight.Bold
         )
     }
@@ -101,78 +90,58 @@ fun SplashScreen() {
 @Composable
 fun MainScreen() {
     val context = LocalContext.current
-
-    // NEW: Activate our System Broadcast Listener
     BatteryWarningReceiver(context = context)
 
-    // --- STATE VARIABLES (These replace findViewById) ---
-    var date by remember { mutableStateOf("") }
-    var customerName by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var priceStr by remember { mutableStateOf("") }
-    var quantityStr by remember { mutableStateOf("") }
+    // WORK ITEM: Shared Preferences (Saves the Cashier's Name)
+    val sharedPreferences = remember { context.getSharedPreferences("PerfumeShopPrefs", Context.MODE_PRIVATE) }
+    var cashierNameInput by remember { mutableStateOf(sharedPreferences.getString("CASHIER_NAME", "") ?: "") }
 
-    // Tracks if the camera is open or closed
+    // --- STATE VARIABLES (Renamed to prevent Scope Collisions) ---
+    var dateInput by remember { mutableStateOf("") }
+    var customerNameInput by remember { mutableStateOf("") }
+    var phoneInput by remember { mutableStateOf("") }
+    var priceInput by remember { mutableStateOf("") }
+    var quantityInput by remember { mutableStateOf("") }
+
     var showCamera by remember { mutableStateOf(false) }
-
-    // Asks the user for Camera Permission
     val cameraPermissionState = com.google.accompanist.permissions.rememberPermissionState(
         android.Manifest.permission.CAMERA
     )
 
-    // Dropdown State
-    val perfumeOptions = listOf(
-        "Sauvage by Dior", "Bleu de Chanel", "Acqua Di Gio", "YSL La Nuit", "Tom Ford Oud Wood"
-    )
+    val perfumeOptions = listOf("Sauvage by Dior", "Bleu de Chanel", "Acqua Di Gio", "YSL La Nuit", "Tom Ford Oud Wood")
     var expanded by remember { mutableStateOf(false) }
     var selectedPerfume by remember { mutableStateOf(perfumeOptions[0]) }
 
-    // Radio Button State
     val sizeOptions = listOf("50ml", "100ml")
     var selectedSize by remember { mutableStateOf(sizeOptions[0]) }
 
-    // Ledger State
     val transactionsList = remember { mutableStateListOf<PerfumeTransaction>() }
-    val coroutineScope = rememberCoroutineScope() // Allows us to run background internet tasks
+    val coroutineScope = rememberCoroutineScope()
 
-    // Connect to our local Room Database
     val db = remember { DatabaseProvider.getDatabase(context) }
     val dao = db.perfumeDao()
 
-    // PAGE LOAD: Two-Way Sync (Offline-First Strategy)
+    // PAGE LOAD: Two-Way Sync (Offline-First)
     LaunchedEffect(Unit) {
-        // 1. Immediately load phone data so the screen isn't empty
         val localData = dao.getAllLocalTransactions()
         transactionsList.clear()
         transactionsList.addAll(localData)
 
-        // 2. Try to connect to the internet
         try {
-            // A. See what is currently on the cloud
             val apiData = RetrofitClient.apiService.getTransactions()
-
-            // B. Find local phone records that are NOT on the cloud yet
-            // (We compare the IDs. If the phone has an ID the cloud doesn't, it's an offline record)
             val unsyncedRecords = localData.filter { localRecord ->
                 apiData.none { cloudRecord -> cloudRecord.id == localRecord.id }
             }
-
-            // C. Push those missing offline records UP to the cloud!
             unsyncedRecords.forEach { offlineTransaction ->
                 RetrofitClient.apiService.addTransaction(offlineTransaction)
             }
-
-            // D. Now that the cloud has everything, pull the master list back DOWN
             val finalApiData = RetrofitClient.apiService.getTransactions()
-            dao.insertAll(finalApiData) // Updates the local database
+            dao.insertAll(finalApiData)
 
-            // E. Refresh the screen perfectly
             val updatedLocalData = dao.getAllLocalTransactions()
             transactionsList.clear()
             transactionsList.addAll(updatedLocalData)
-
         } catch (e: Exception) {
-            // If the internet is down, do nothing! The user still sees their local data.
             Toast.makeText(context, "Offline Mode: Showing local data", Toast.LENGTH_SHORT).show()
         }
     }
@@ -183,55 +152,49 @@ fun MainScreen() {
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
-
     ) {
 
-            // 📍 MODIFICATION: Add the carousel right here at the top!
-            PromoCarousel()
-            Spacer(modifier = Modifier.height(8.dp))
+        // SPRINT 4: Promo Carousel
+        PromoCarousel()
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            "New Perfume Sale",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+        // SPRINT 4: Cashier Name Box
+        OutlinedTextField(
+            value = cashierNameInput,
+            onValueChange = { newName ->
+                cashierNameInput = newName
+                sharedPreferences.edit().putString("CASHIER_NAME", newName).apply()
+            },
+            label = { Text("Cashier Name (Auto-Saves)") },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            singleLine = true
         )
+
+        Text("New Perfume Sale", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Basic Text Fields
         OutlinedTextField(
-            value = date,
-            onValueChange = { date = it },
-            label = { Text("Date (yyyy-mm-dd)") },
-            modifier = Modifier.fillMaxWidth()
+            value = dateInput, onValueChange = { dateInput = it },
+            label = { Text("Date (yyyy-mm-dd)") }, modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            value = customerName,
-            onValueChange = { customerName = it },
-            label = { Text("Customer Name") },
-            modifier = Modifier.fillMaxWidth()
+            value = customerNameInput, onValueChange = { customerNameInput = it },
+            label = { Text("Customer Name") }, modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            value = phone,
-            onValueChange = { phone = it },
-            label = { Text("Phone Number") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            value = phoneInput, onValueChange = { phoneInput = it },
+            label = { Text("Phone Number") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // WIDGET 1: Compose Dropdown (Spinner)
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
             OutlinedTextField(
-                value = selectedPerfume,
-                onValueChange = {},
-                readOnly = true,
+                value = selectedPerfume, onValueChange = {}, readOnly = true,
                 label = { Text("Perfume Choice") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .menuAnchor()
-                    .fillMaxWidth()
+                modifier = Modifier.menuAnchor().fillMaxWidth()
             )
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 perfumeOptions.forEach { selectionOption ->
@@ -245,7 +208,6 @@ fun MainScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // WIDGET 2: Radio Buttons
         Text("Bottle Size:", modifier = Modifier.align(Alignment.Start))
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             sizeOptions.forEach { text ->
@@ -254,19 +216,14 @@ fun MainScreen() {
             }
         }
 
-        // Numbers Fields
         OutlinedTextField(
-            value = priceStr,
-            onValueChange = { priceStr = it },
-            label = { Text("Price Per Bottle ($)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            value = priceInput, onValueChange = { priceInput = it },
+            label = { Text("Price Per Bottle ($)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            value = quantityStr,
-            onValueChange = { quantityStr = it },
-            label = { Text("Quantity") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            value = quantityInput, onValueChange = { quantityInput = it },
+            label = { Text("Quantity") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -285,67 +242,49 @@ fun MainScreen() {
             Text("📷 Scan Item Barcode")
         }
 
-
         // SAVE BUTTON
         Button(
             onClick = {
                 try {
-
                     val transaction = PerfumeTransaction().apply {
-                        //id = transactionsList.size + 1
-                        transactionDate = date
-                        this.customerName = customerName
-                        phoneNumber = phone
+                        transactionDate = dateInput
+                        customerName = customerNameInput
+                        phoneNumber = phoneInput
                         perfumeChoice = selectedPerfume
                         perfumeSize = selectedSize
-                        pricePerBottle = priceStr.toIntOrNull() ?: 0
-                        quantity = quantityStr.toIntOrNull() ?: 0
+                        pricePerBottle = priceInput.toIntOrNull() ?: 0
+                        quantity = quantityInput.toIntOrNull() ?: 0
+                        cashierName = cashierNameInput
                     }
 
                     PerfumeTransactionBO.calculateTotals(transaction)
-// NEW API LOGIC: Upload to the internet in the background
-                    // SAVE LOGIC: Offline-First Strategy
+
                     coroutineScope.launch {
                         try {
-                            // 1. ALWAYS save to the local phone database first
                             dao.insertTransaction(transaction)
 
-                            // 2. Refresh the UI to show the new receipt immediately
                             val updatedData = dao.getAllLocalTransactions()
                             transactionsList.clear()
                             transactionsList.addAll(updatedData)
 
-                            Toast.makeText(context, "Saved Locally!", Toast.LENGTH_SHORT).show()
-
-                            // Clear form for next user
-                            customerName = ""
-                            phone = ""
-                            priceStr = ""
-                            quantityStr = ""
+                            // Clear Form
+                            customerNameInput = ""
+                            phoneInput = ""
+                            priceInput = ""
+                            quantityInput = ""
                             selectedPerfume = perfumeOptions[0]
                             selectedSize = sizeOptions[0]
 
-                            // 3. NOW, silently try to push it to the Cloud API in the background
                             try {
                                 RetrofitClient.apiService.addTransaction(transaction)
-                                Toast.makeText(context, "Synced to Cloud!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Saved & Synced to Cloud!", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                // CHANGED: We replaced the ugly e.message with a clean, professional warning
                                 Toast.makeText(context, "Offline: Saved locally, will sync later.", Toast.LENGTH_LONG).show()
                             }
                         } catch (e: Exception) {
                             Toast.makeText(context, "Database Error", Toast.LENGTH_SHORT).show()
                         }
                     }
-                    // Clear form for next user
-                    customerName = ""
-                    phone = ""
-                    priceStr = ""
-                    quantityStr = ""
-                    selectedPerfume = perfumeOptions[0]
-                    selectedSize = sizeOptions[0]
-
-                    Toast.makeText(context, "Saved!", Toast.LENGTH_SHORT).show()
                 } catch (e: Exception) {
                     Toast.makeText(context, "Error saving", Toast.LENGTH_SHORT).show()
                 }
@@ -355,21 +294,16 @@ fun MainScreen() {
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-// LEDGER: Displaying entities via Material Cards
+
         Text("Previous Transactions", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         transactionsList.forEach { t ->
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                // Use a Row so we can put the text on the left and the button on the right
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -378,66 +312,47 @@ fun MainScreen() {
                         Text("${t.perfumeChoice} (${t.perfumeSize})")
                         Text(
                             "Total: $${String.format("%.2f", t.total)}",
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.Bold
+                            color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Cashier: ${t.cashierName.ifEmpty { "Unknown" }}",
+                            style = MaterialTheme.typography.bodyMedium, color = Color.Gray
                         )
                     }
 
-                    // WORK ITEM 8: The Share Button
                     IconButton(onClick = {
-                        // 1. Format the receipt text
                         val receiptText = """
                             🌸 Perfume Shop Receipt 🌸
                             Customer: ${t.customerName}
                             Item: ${t.perfumeChoice} (${t.perfumeSize})
                             Quantity: ${t.quantity}
                             Total Paid: $${String.format("%.2f", t.total)}
+                            Cashier: ${t.cashierName}
                             Thank you for your purchase!
                         """.trimIndent()
 
-                        // 2. Create the Implicit Intent to share
-                        val sendIntent = android.content.Intent().apply {
-                            action = android.content.Intent.ACTION_SEND
-                            putExtra(android.content.Intent.EXTRA_TEXT, receiptText)
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, receiptText)
                             type = "text/plain"
                         }
-
-                        // 3. Launch the Android Share Menu
-                        val shareIntent = android.content.Intent.createChooser(sendIntent, "Share Receipt Via...")
-                        context.startActivity(shareIntent)
+                        context.startActivity(Intent.createChooser(sendIntent, "Share Receipt Via..."))
                     }) {
-                        // Built-in Material Share Icon
-                        Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Share,
-                            contentDescription = "Share Receipt",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                        Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-
             }
         }
     }
+
     if (showCamera) {
         CameraScannerScreen(onBarcodeScanned = { scannedNumber ->
-            // 1. Close the camera
             showCamera = false
-
-            // 2. Check the catalog! Match the scanned number to a perfume
             when (scannedNumber) {
-                // REPLACE "123456789" with the EXACT number you just scanned on your phone/perfume box!
                 "3145891073607" -> {
-                    selectedPerfume = perfumeOptions[1] // Changes the dropdown to the 1st perfume
+                    selectedPerfume = perfumeOptions[1]
                     Toast.makeText(context, "Scanned: ${perfumeOptions[1]}", Toast.LENGTH_SHORT).show()
                 }
-
-                // You can add as many as you want here...
-                "987654321" -> {
-                    selectedPerfume = perfumeOptions[1] // Changes the dropdown to the 2nd perfume
-                    Toast.makeText(context, "Scanned: ${perfumeOptions[1]}", Toast.LENGTH_SHORT).show()
-                }
-
-                // If they scan a random bottle of water or something not in our system:
                 else -> {
                     Toast.makeText(context, "Item not in database. Scanned ID: $scannedNumber", Toast.LENGTH_LONG).show()
                 }
@@ -448,77 +363,41 @@ fun MainScreen() {
 
 @Composable
 fun BatteryWarningReceiver(context: Context) {
-    // DisposableEffect ensures the receiver is safely closed when the app is closed
     DisposableEffect(context) {
         val batteryReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action == Intent.ACTION_BATTERY_LOW) {
-                    Toast.makeText(
-                        context,
-                        "⚠️ CRITICAL: Battery Low! Plug in the POS system!",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(context, "⚠️ CRITICAL: Battery Low!", Toast.LENGTH_LONG).show()
                 }
             }
         }
-
-        // Tell Android we specifically only want to listen for the "Battery Low" broadcast
-        val filter = IntentFilter(Intent.ACTION_BATTERY_LOW)
-        context.registerReceiver(batteryReceiver, filter)
-
-        // Cleanup when the app is closed
-        onDispose {
-            context.unregisterReceiver(batteryReceiver)
-        }
+        context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_LOW))
+        onDispose { context.unregisterReceiver(batteryReceiver) }
     }
 }
 
 @Composable
 fun PromoCarousel() {
-    // A simple list of promos to display
-    val promos = listOf(
-        "🌟 Holiday Sale: 20% Off Dior",
-        "🔥 Top Seller: Chanel No. 5",
-        "🎁 Free Gift with $100 Purchase",
-        "✨ New Arrival: Tom Ford Vanilla"
-    )
-
+    val promos = listOf("🌟 Holiday Sale: 20% Off Dior", "🔥 Top Seller: Chanel No. 5", "🎁 Free Gift with $100 Purchase", "✨ New Arrival: Tom Ford Vanilla")
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-
         Text(
-            text = "Today's Promotions",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            // FIXED: Chained the paddings together!
-            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
+            text = "Today's Promotions", style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
         )
-
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             promos.forEach { promoText ->
                 Card(
-                    modifier = Modifier
-                        .width(200.dp)
-                        .height(100.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    ),
+                    modifier = Modifier.width(200.dp).height(100.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize().padding(12.dp),
-                        contentAlignment = androidx.compose.ui.Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxSize().padding(12.dp), contentAlignment = Alignment.Center) {
                         Text(
-                            text = promoText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            text = promoText, style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer,
                             textAlign = TextAlign.Center
                         )
                     }
