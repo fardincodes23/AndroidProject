@@ -89,6 +89,8 @@ fun SplashScreen() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun MainScreen() {
+    // SPRINT 4: Snackbar State
+    val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     BatteryWarningReceiver(context = context)
 
@@ -245,6 +247,13 @@ fun MainScreen() {
         // SAVE BUTTON
         Button(
             onClick = {
+                // 📍 SPRINT 4: Form Validation & Snackbar!
+                if (dateInput.isBlank() || customerNameInput.isBlank() || phoneInput.isBlank() || priceInput.isBlank() || quantityInput.isBlank()) {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("⚠️ Please fill out all fields before saving!")
+                    }
+                    return@Button // This instantly stops the save process!
+                }
                 try {
                     val transaction = PerfumeTransaction().apply {
                         transactionDate = dateInput
@@ -346,6 +355,13 @@ fun MainScreen() {
                 }
             }
         }
+    }
+    // SPRINT 4: Draw the Snackbar at the bottom of the screen
+    Box(modifier = Modifier.fillMaxSize()) {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 
     if (showCamera) {
