@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,6 +31,16 @@ import android.content.IntentFilter
 import androidx.compose.material.icons.filled.Share
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -174,7 +183,13 @@ fun MainScreen() {
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
+
     ) {
+
+            // 📍 MODIFICATION: Add the carousel right here at the top!
+            PromoCarousel()
+            Spacer(modifier = Modifier.height(8.dp))
+
         Text(
             "New Perfume Sale",
             fontSize = 24.sp,
@@ -454,6 +469,61 @@ fun BatteryWarningReceiver(context: Context) {
         // Cleanup when the app is closed
         onDispose {
             context.unregisterReceiver(batteryReceiver)
+        }
+    }
+}
+
+@Composable
+fun PromoCarousel() {
+    // A simple list of promos to display
+    val promos = listOf(
+        "🌟 Holiday Sale: 20% Off Dior",
+        "🔥 Top Seller: Chanel No. 5",
+        "🎁 Free Gift with $100 Purchase",
+        "✨ New Arrival: Tom Ford Vanilla"
+    )
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+
+        Text(
+            text = "Today's Promotions",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            // FIXED: Chained the paddings together!
+            modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            promos.forEach { promoText ->
+                Card(
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(100.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(12.dp),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        Text(
+                            text = promoText,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
         }
     }
 }
